@@ -1,0 +1,26 @@
+{
+  "polygon_testnet": {
+    "CRSTL": {
+      "address": "0xe46d32C687F09E505b19b9Db1fd31d1dd7BC3D6D",
+      "verification": "https://mumbai.polygonscan.com/address/0xe46d32C687F09E505b19b9Db1fd31d1dd7BC3D6D#code"
+    },
+    "CRSTLUpgradeable": {
+      "proxyAddress": "0x5E3249a71fC63b905A54073340a9B9Ac75cC9d30",
+      "proxyVerification": "https://mumbai.polygonscan.com/address/0x5E3249a71fC63b905A54073340a9B9Ac75cC9d30#code",
+      "implementationAddress": "0x3750426d598Ca91FE533B48f23B29ae67359D81C",
+      "implementationVerification": "https://mumbai.polygonscan.com/address/0x3750426d598Ca91FE533B48f23B29ae67359D81C#code"
+    }
+  },
+  "polygon_mainnet": {
+    "CRSTL": {
+      "address": "",
+      "verification": ""
+    },
+    "CRSTLUpgradeable": {
+      "proxyAddress": "",
+      "proxyVerification": "",
+      "implementationAddress": "",
+      "implementationVerification": ""
+    }
+  }
+}

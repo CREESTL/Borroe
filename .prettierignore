@@ -1,0 +1,10 @@
+build
+coverage
+node_modules
+migrations
+flat
+cache
+artifacts
+docs
+coverage.json
+README.md
