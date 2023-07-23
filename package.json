@@ -1,5 +1,5 @@
 {
-  "name": "BSC_NFT_Game",
+  "name": "BORROE Token",
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "1.0.3",
     "@nomiclabs/hardhat-ethers": "2.2.0",
@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@nomicfoundation/hardhat-network-helpers": "^1.0.8",
-    "@openzeppelin/contracts": "^4.8.0",
+    "@openzeppelin/contracts": "4.9.0",
     "@prb/math": "^4.0.1",
     "chai": "4.3.6",
     "delay": "5.0.0",
