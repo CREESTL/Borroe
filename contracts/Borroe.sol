@@ -3,11 +3,12 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./interfaces/IBorroe.sol";
 
 /// @title The native ERC20 token for Borroe system.
-contract BORROE is ERC20, Ownable {
+contract BORROE is IBorroe, ERC20, Ownable {
     
-    uint256 public _maxTotalSupply = 1e9;
+    uint256 private constant _maxTotalSupply = 1e9;
 
     /// @dev Converts from % to basis points and vice versa
     uint256 constant BP_CONVERTER = 1e4;
@@ -22,19 +23,30 @@ contract BORROE is ERC20, Ownable {
     address private immutable _rewards;
 
     // 50% 
-    uint256 constant TO_VESTING = 5000;
+    uint256 private constant TO_VESTING = 5000;
     
     // 5% + 2.5%
-    uint256 constant TO_LOCK = 750;
+    uint256 private constant TO_LOCK = 750;
     
     // 10% 
-    uint256 constant TO_LIQUIDITY_POOL = 1000;
-    uint256 constant TO_EXCHANGE_LISTING = 1000;
-    uint256 constant TO_MARKETING = 1000;
-    uint256 constant TO_TREASURY = 1000;
+    uint256 private constant TO_LIQUIDITY_POOL = 1000;
+    uint256 private constant TO_EXCHANGE_LISTING = 1000;
+    uint256 private constant TO_MARKETING = 1000;
+    uint256 private constant TO_TREASURY = 1000;
     
     // 2.5%
-    uint256 constant TO_REWARDS = 250;
+    uint256 private constant TO_REWARDS = 250;
+    
+    // 1%
+    uint256 private constant BURNT_ON_TRANSFER = 100;
+    uint256 private constant TO_MARKETING_ON_TRANSFER = 100;
+    uint256 private constant TO_REWARDS_ON_TRANSFER = 100;
+    
+    /// @dev If tokens are transfered to the whitelisted address, 
+    ///      3% of fees are charged
+    /// @dev DEXes trading BORROE tokens should be whitelisted 
+    ///      so that users pay transaction fees (3%) when creating orders
+    mapping(address => bool) private _whitelist;
     
 
     constructor(
@@ -106,14 +118,99 @@ contract BORROE is ERC20, Ownable {
         
         
     }
+
+    /// @notice See {IBorroe-maxTotalSupply}
+    function maxTotalSupply() external pure returns (uint256) {
+        return _maxTotalSupply * 10 ** decimals();
+    }
     
+    /// @notice See {IBorroe-checkWhitelisted}
+    function checkWhitelisted(address user) external view returns (bool) {
+        require(user != address(0), "BORROE: User cannot have zero address");
+        return _whitelist[user];
+    }
+    
+    /// @notice See {IBorroe-addToWhitelist}
+    function addToWhitelist(address user) external onlyOwner {
+        require(user != address(0), "BORROE: User cannot have zero address");
+        require(!_whitelist[user], "BORROE: User is already whitelisted");
+        _whitelist[user] = true;
+        emit AddedToWhitelist(user);
+    }
+    
+    /// @notice See {IBorroe-removeFromWhitelist}
+    function removeFromWhitelist(address user) external onlyOwner {
+        require(user != address(0), "BORROE: User cannot have zero address");
+        require(_whitelist[user], "BORROE: User is not whitelisted");
+        _whitelist[user] = false;
+        emit RemovedFromWhitelist(user);
+    }
+    
+    /// @notice See {IBorroe-decimals}
     function decimals() public pure override returns (uint8) {
         return 18;
     }
     
-    function maxTotalSupply() public view returns (uint256) {
-        return _maxTotalSupply * 10 ** decimals();
+    /// @notice Custom transfer function that charges 3% of transfered amount 
+    ///      as fees and distributes them
+    function transfer(address to, uint256 amount) 
+        public 
+        override (ERC20, IERC20)
+        returns (bool) 
+    {
+        address owner = _msgSender();
+
+        // Charge and distribute fees if destination address is whitelisted
+        if (_whitelist[to]) {
+            amount = _distributeFees(owner, amount);
+        }
+
+        _transfer(owner, to, amount);
+
+        return true;
+    }
+
+    /// @notice Custom transfer function that charges 3% of transfered amount 
+    ///      as fees and distributes them
+    function transferFrom(address from, address to, uint256 amount) 
+        public 
+        override (ERC20, IERC20)
+        returns (bool) 
+    {
+        address spender = _msgSender();
+        _spendAllowance(from, spender, amount);
+
+        // Charge and distribute fees if destination address is whitelisted
+        if (_whitelist[to]) {
+            amount = _distributeFees(from, amount);
+        }
+
+        _transfer(from, to, amount);
+
+        return true;
     }
     
+
+    /// @dev Calculates parts of fee amount to be distributed among known destinations
+    ///      and distributes them:
+    ///      1% gets burnt 
+    ///      1% gets transfered to markeing wallet 
+    ///      1% gets transfered to rewards wallet
+    function _distributeFees(address from, uint256 amount) private returns (uint256) {
+        require(from != address(0), "BORROE: Fees distributor cannot have zero address");
+        require(amount != 0, "BORROE: Fee amount cannot be zero");
+        uint256 burnt = amount * BURNT_ON_TRANSFER / BP_CONVERTER;
+        uint256 toMarketing = amount * TO_MARKETING_ON_TRANSFER / BP_CONVERTER;
+        uint256 toRewards = amount * TO_REWARDS_ON_TRANSFER / BP_CONVERTER;
+        
+        _burn(from, burnt);
+        _transfer(from, _marketing, toMarketing);
+        _transfer(from, _rewards, toRewards);
+
+        uint256 decreasedAmount = amount - burnt - toMarketing - toRewards;
+
+        return decreasedAmount;
+        
+    }
     
 }
