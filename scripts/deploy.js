@@ -8,21 +8,78 @@ require("dotenv").config();
 const fileName = "./deployOutput.json";
 const OUTPUT_DEPLOY = require(fileName);
 
+const lockAddress = process.env.LOCK_ADDRESS;
+const liquidityPoolAddress = process.env.LIQUIDITY_POOL_ADDRESS;
+const exchangeListingAddress = process.env.EXCHANGE_LISTING_ADDRESS;
+const marketingAddress = process.env.MARKETING_ADDRESS;
+const treasuryAddress = process.env.TREASURY_ADDRESS;
+const rewardsAddress = process.env.REWARDS_ADDRESS;
+
+const initialHolders = process.env.INITIAL_HOLDERS.split(", ");
+
 let contractName;
 let token;
-let tokenUpgradeable;
+let vesting;
 
 async function main() {
     console.log(`[NOTICE!] Chain of deployment: ${network.name}`);
 
     // ====================================================
 
-    // Contract #1: CRSTL
+    // Contract #1: Vesting
 
-    contractName = "CRSTL";
+    contractName = "Vesting";
     console.log(`[${contractName}]: Start of Deployment...`);
     _contractProto = await ethers.getContractFactory(contractName);
-    contractDeployTx = await _contractProto.deploy("CREESTL", "CRSTL", 18);
+    contractDeployTx = await _contractProto.deploy(
+        initialHolders
+    );
+    vesting = await contractDeployTx.deployed();
+    console.log(`[${contractName}]: Deployment Finished!`);
+    OUTPUT_DEPLOY[network.name][contractName].address = vesting.address;
+
+    // Verify
+    console.log(`[${contractName}]: Start of Verification...`);
+
+    await delay(90000);
+
+    if (network.name === "polygon_mainnet") {
+        url = "https://polygonscan.com/address/" + vesting.address + "#code";
+    } else if (network.name === "polygon_testnet") {
+        url =
+            "https://mumbai.polygonscan.com/address/" + vesting.address + "#code";
+    }
+
+    OUTPUT_DEPLOY[network.name][contractName].verification = url;
+
+    try {
+        await hre.run("verify:verify", {
+            address: vesting.address,
+            constructorArguments: [
+                initialHolders 
+            ],
+        });
+    } catch (error) {
+        console.error(error);
+    }
+    console.log(`[${contractName}]: Verification Finished!`);
+
+    // ====================================================
+
+    // Contract #2: BORROE token
+
+    contractName = "BORROE";
+    console.log(`[${contractName}]: Start of Deployment...`);
+    _contractProto = await ethers.getContractFactory(contractName);
+    contractDeployTx = await _contractProto.deploy(
+        vesting.address,
+        lockAddress,
+        liquidityPoolAddress,
+        exchangeListingAddress,
+        marketingAddress,
+        treasuryAddress,
+        rewardsAddress
+    );
     token = await contractDeployTx.deployed();
     console.log(`[${contractName}]: Deployment Finished!`);
     OUTPUT_DEPLOY[network.name][contractName].address = token.address;
@@ -44,7 +101,15 @@ async function main() {
     try {
         await hre.run("verify:verify", {
             address: token.address,
-            constructorArguments: ["CREESTL", "CRSTL", 18],
+            constructorArguments: [
+                vesting.address,
+                lockAddress,
+                liquidityPoolAddress,
+                exchangeListingAddress,
+                marketingAddress,
+                treasuryAddress,
+                rewardsAddress
+            ],
         });
     } catch (error) {
         console.error(error);
@@ -52,86 +117,10 @@ async function main() {
     console.log(`[${contractName}]: Verification Finished!`);
 
     // ====================================================
-
-    // Contract #2: CRSTLUpgradeable
-
-    // Deploy proxy and implementation
-    contractName = "CRSTLUpgradeable";
-    console.log(`[${contractName}]: Start of Deployment...`);
-    _contractProto = await ethers.getContractFactory(contractName);
-    tokenUpgradeable = await upgrades.deployProxy(
-        _contractProto,
-        ["CREESTLUpgradeable", "CRSTLU", 18],
-        {
-            initializer: "initialize",
-            kind: "uups",
-        }
-    );
-    await tokenUpgradeable.deployed();
-    console.log(`[${contractName}]: Deployment Finished!`);
-    OUTPUT_DEPLOY[network.name][contractName].proxyAddress =
-        tokenUpgradeable.address;
-
-    await delay(90000);
-
-    // Verify implementation
-    console.log(`[${contractName}][Implementation]: Start of Verification...`);
-
-    let tokenUpgradeableImplAddress =
-        await upgrades.erc1967.getImplementationAddress(
-            tokenUpgradeable.address
-        );
-    OUTPUT_DEPLOY[network.name][contractName].implementationAddress =
-        tokenUpgradeableImplAddress;
-    if (network.name === "polygon_mainnet") {
-        url =
-            "https://polygonscan.com/address/" +
-            tokenUpgradeableImplAddress +
-            "#code";
-    } else if (network.name === "polygon_testnet") {
-        url =
-            "https://mumbai.polygonscan.com/address/" +
-            tokenUpgradeableImplAddress +
-            "#code";
-    }
-    OUTPUT_DEPLOY[network.name][contractName].implementationVerification = url;
-    try {
-        await hre.run("verify:verify", {
-            address: tokenUpgradeableImplAddress,
-        });
-    } catch (error) {}
-
-    // Initialize implementation if it has not been initialized yet
-    let tokenUpgradeableImpl = await ethers.getContractAt(
-        "CRSTLUpgradeable",
-        tokenUpgradeableImplAddress
-    );
-    try {
-        await tokenUpgradeableImpl.initialize("CRSTLUpgradeable", "CRSTLU", 18);
-    } catch (error) {}
-    console.log(`[${contractName}][Implementation]: Verification Finished!`);
-
-    // Verify proxy
-    console.log(`[${contractName}][Proxy]: Start of Verification...`);
-    if (network.name === "polygon_mainnet") {
-        url =
-            "https://polygonscan.com/address/" +
-            tokenUpgradeable.address +
-            "#code";
-    } else if (network.name === "polygon_testnet") {
-        url =
-            "https://mumbai.polygonscan.com/address/" +
-            tokenUpgradeable.address +
-            "#code";
-    }
-    OUTPUT_DEPLOY[network.name][contractName].proxyVerification = url;
-
-    try {
-        await hre.run("verify:verify", {
-            address: tokenUpgradeable.address,
-        });
-    } catch (error) {}
-    console.log(`[${contractName}][Proxy]: Verification Finished!`);
+    
+    // Add token address and start vestings
+    await vesting.setToken(token.address);
+    await vesting.startInitialVestings(initialHolders);
 
     // ====================================================
 
