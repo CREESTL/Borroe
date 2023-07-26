@@ -22,24 +22,24 @@ contract BORROE is IBorroe, ERC20, Ownable {
     address private immutable _rewards;
 
     // 50%
-    uint256 private constant TO_VESTING = 5000;
+    uint256 public constant TO_VESTING = 5000;
 
     // 5% + 2.5%
-    uint256 private constant TO_LOCK = 750;
+    uint256 public constant TO_LOCK = 750;
 
     // 10%
-    uint256 private constant TO_LIQUIDITY_POOL = 1000;
-    uint256 private constant TO_EXCHANGE_LISTING = 1000;
-    uint256 private constant TO_MARKETING = 1000;
-    uint256 private constant TO_TREASURY = 1000;
+    uint256 public constant TO_LIQUIDITY_POOL = 1000;
+    uint256 public constant TO_EXCHANGE_LISTING = 1000;
+    uint256 public constant TO_MARKETING = 1000;
+    uint256 public constant TO_TREASURY = 1000;
 
     // 2.5%
-    uint256 private constant TO_REWARDS = 250;
+    uint256 public constant TO_REWARDS = 250;
 
     // 1%
-    uint256 private constant BURNT_ON_TRANSFER = 100;
-    uint256 private constant TO_MARKETING_ON_TRANSFER = 100;
-    uint256 private constant TO_REWARDS_ON_TRANSFER = 100;
+    uint256 public constant BURNT_ON_TRANSFER = 100;
+    uint256 public constant TO_MARKETING_ON_TRANSFER = 100;
+    uint256 public constant TO_REWARDS_ON_TRANSFER = 100;
 
     /// @dev If tokens are transfered to the whitelisted address,
     ///      3% of fees are charged
