@@ -10,6 +10,176 @@
 
 ## Methods
 
+### BURNT_ON_TRANSFER
+
+```solidity
+function BURNT_ON_TRANSFER() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_EXCHANGE_LISTING
+
+```solidity
+function TO_EXCHANGE_LISTING() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_LIQUIDITY_POOL
+
+```solidity
+function TO_LIQUIDITY_POOL() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_LOCK
+
+```solidity
+function TO_LOCK() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_MARKETING
+
+```solidity
+function TO_MARKETING() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_MARKETING_ON_TRANSFER
+
+```solidity
+function TO_MARKETING_ON_TRANSFER() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_REWARDS
+
+```solidity
+function TO_REWARDS() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_REWARDS_ON_TRANSFER
+
+```solidity
+function TO_REWARDS_ON_TRANSFER() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_TREASURY
+
+```solidity
+function TO_TREASURY() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_VESTING
+
+```solidity
+function TO_VESTING() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
 ### addToWhitelist
 
 ```solidity

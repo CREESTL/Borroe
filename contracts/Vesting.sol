@@ -24,17 +24,17 @@ contract Vesting is IVesting, Ownable {
     ///      [User address => period number => bool]
     ///      Used to skip periods that user has already claimed
     mapping(address => mapping(uint256 => bool)) private _claimedPeriods;
-    
+
     /// @notice The BORROE token address
     address public borroe;
-    
+
     /// @dev List of initial token holders
     address[] private _initialHolders;
-    
+
     /// @notice True if initial vestings have started
     ///         Vestings can only start once
-    bool vested = false;
-    
+    bool public vested = false;
+
     modifier ifNotVested() {
         require(!vested, "Vesting: Initial vestings already started");
         _;
@@ -42,9 +42,7 @@ contract Vesting is IVesting, Ownable {
 
     /// @param initialHolders The list of addresses of initial token holders that
     ///        will receive tokens after vesting
-    constructor(
-        address[] memory initialHolders
-    ) {
+    constructor(address[] memory initialHolders) {
         require(initialHolders.length > 0, "Vesting: No initial holders");
         _initialHolders = initialHolders;
     }
@@ -52,11 +50,7 @@ contract Vesting is IVesting, Ownable {
     /// @notice See {IVesting-startInitialVestings}
     function startInitialVestings(
         address[] memory initialHolders
-    ) 
-        external 
-        onlyOwner 
-        ifNotVested
-    {
+    ) external onlyOwner ifNotVested {
         require(borroe != address(0), "Vesting: Invalid token address");
         // All holders receive the same share
         uint256 borroeBalance = IBorroe(borroe).balanceOf(address(this));
@@ -67,7 +61,6 @@ contract Vesting is IVesting, Ownable {
             address holder = initialHolders[i];
             _startVesting(holder, holderShare);
         }
-        
     }
 
     /// @notice See {IVesting-setToken}
@@ -76,9 +69,11 @@ contract Vesting is IVesting, Ownable {
         borroe = token;
         emit TokenChanged(token);
     }
-    
+
     /// @notice See {IVesting-getUserVesting}
-    function getUserVesting(address user) external view returns(TokenVesting memory) {
+    function getUserVesting(
+        address user
+    ) external view returns (TokenVesting memory) {
         require(user != address(0), "Vesting: Invalid user address");
         return _usersToVestings[user];
     }
@@ -103,7 +98,10 @@ contract Vesting is IVesting, Ownable {
 
         TokenVesting storage vesting = _usersToVestings[user];
 
-        require(vesting.status != VestingStatus.Claimed, "Vesting: Vesting already claimed");
+        require(
+            vesting.status != VestingStatus.Claimed,
+            "Vesting: Vesting already claimed"
+        );
 
         // Each period the same amount is vested
         uint256 amountPerPeriod = vesting.amount / vesting.claimablePeriods;
@@ -130,7 +128,9 @@ contract Vesting is IVesting, Ownable {
             // the number of periods from last claimed period to
             // the last claimable period
             if (unclaimedPeriods > vesting.claimablePeriods) {
-                unclaimedPeriods = vesting.claimablePeriods - vesting.lastClaimedPeriod;
+                unclaimedPeriods =
+                    vesting.claimablePeriods -
+                    vesting.lastClaimedPeriod;
             }
         }
 
@@ -140,7 +140,7 @@ contract Vesting is IVesting, Ownable {
         // Mark the last period user has claimed rewards
         vesting.lastClaimedPeriod += unclaimedPeriods;
 
-        // Mark that user has claimed specific amount 
+        // Mark that user has claimed specific amount
         vesting.amountClaimed += unclaimedPeriods * amountPerPeriod;
 
         // Increment total claimed amount
@@ -154,21 +154,16 @@ contract Vesting is IVesting, Ownable {
 
         return totalAvailableAmount;
     }
-    
 
     /// @dev Starts a single vesting for the user
     /// @param to The receiver of tokens
     /// @param amount The amount of tokens to vest
+    function _startVesting(address to, uint256 amount) private onlyOwner {
+        require(to != address(0), "Vesting: Invalid user address");
+        require(amount != 0, "Vesting: Invalid amount");
     function _startVesting(
         address to,
         uint256 amount
-    ) private onlyOwner {
-        require(to != address(0), "Vesting: Reciever cannot have zero address");
-        require(amount != 0, "Vesting: Amount cannot be zero");
-
-        // Create a new vesting
-        TokenVesting memory vesting = TokenVesting({
-            status: VestingStatus.InProgress,
             to: to,
             amount: amount,
             amountClaimed: 0,

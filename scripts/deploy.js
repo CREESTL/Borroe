@@ -31,9 +31,7 @@ async function main() {
     contractName = "Vesting";
     console.log(`[${contractName}]: Start of Deployment...`);
     _contractProto = await ethers.getContractFactory(contractName);
-    contractDeployTx = await _contractProto.deploy(
-        initialHolders
-    );
+    contractDeployTx = await _contractProto.deploy(initialHolders);
     vesting = await contractDeployTx.deployed();
     console.log(`[${contractName}]: Deployment Finished!`);
     OUTPUT_DEPLOY[network.name][contractName].address = vesting.address;
@@ -47,7 +45,9 @@ async function main() {
         url = "https://polygonscan.com/address/" + vesting.address + "#code";
     } else if (network.name === "polygon_testnet") {
         url =
-            "https://mumbai.polygonscan.com/address/" + vesting.address + "#code";
+            "https://mumbai.polygonscan.com/address/" +
+            vesting.address +
+            "#code";
     }
 
     OUTPUT_DEPLOY[network.name][contractName].verification = url;
@@ -55,9 +55,7 @@ async function main() {
     try {
         await hre.run("verify:verify", {
             address: vesting.address,
-            constructorArguments: [
-                initialHolders 
-            ],
+            constructorArguments: [initialHolders],
         });
     } catch (error) {
         console.error(error);
@@ -108,7 +106,7 @@ async function main() {
                 exchangeListingAddress,
                 marketingAddress,
                 treasuryAddress,
-                rewardsAddress
+                rewardsAddress,
             ],
         });
     } catch (error) {
@@ -117,7 +115,6 @@ async function main() {
     console.log(`[${contractName}]: Verification Finished!`);
 
     // ====================================================
-    
     // Add token address and start vestings
     await vesting.setToken(token.address);
     await vesting.startInitialVestings(initialHolders);
