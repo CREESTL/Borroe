@@ -1,12 +1,12 @@
 {
   "polygon_testnet": {
     "BORROE": {
-      "address": "0x87130a0cE0eFaef394cf4e8997D7fDb67e5500F8",
-      "verification": "https://mumbai.polygonscan.com/address/0x87130a0cE0eFaef394cf4e8997D7fDb67e5500F8#code"
+      "address": "0x7e6620792561bbC26bfFfB48c1116dB2e23Eb0a8",
+      "verification": "https://mumbai.polygonscan.com/address/0x7e6620792561bbC26bfFfB48c1116dB2e23Eb0a8#code"
     },
     "Vesting": {
-      "address": "0x925c62a6A2EE88AD3a069BE2DCCB5CF0B28A27bD",
-      "verification": "https://mumbai.polygonscan.com/address/0x925c62a6A2EE88AD3a069BE2DCCB5CF0B28A27bD#code"
+      "address": "0x05dA263D8dED10570C4E1b41943629B4a0bA9Cf7",
+      "verification": "https://mumbai.polygonscan.com/address/0x05dA263D8dED10570C4E1b41943629B4a0bA9Cf7#code"
     }
   },
   "polygon_mainnet": {

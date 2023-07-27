@@ -37,20 +37,12 @@ module.exports = {
         polygon_mainnet: {
             url: `https://polygon.publicnode.com`,
             accounts: [ACC_PRIVATE_KEY],
-<<<<<<< HEAD
             gasPrice: 35000000000,
-=======
-            gasPrice: 35000000000
->>>>>>> dev
         },
         polygon_testnet: {
             url: `https://polygon-mumbai-bor.publicnode.com`,
             accounts: [ACC_PRIVATE_KEY],
-<<<<<<< HEAD
             gasPrice: 35000000000,
-=======
-            gasPrice: 35000000000
->>>>>>> dev
         },
     },
     mocha: {
