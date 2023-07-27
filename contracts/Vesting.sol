@@ -14,7 +14,7 @@ contract Vesting is IVesting, Ownable {
     using SafeERC20 for ERC20;
 
     /// @dev Used to convert from BPs to percents and vice versa
-    uint256 private constant _converter = 1e4;
+    uint256 private constant _BP_CONVERTER = 1e4;
 
     /// @dev Mapping from user to vesting assigned to him
     ///      Each user can have only one vesting
@@ -66,6 +66,7 @@ contract Vesting is IVesting, Ownable {
     /// @notice See {IVesting-setToken}
     function setToken(address token) external onlyOwner {
         require(token != address(0), "Vesting: Invalid token address");
+        require(token != borroe, "Vesting: Same token");
         borroe = token;
         emit TokenChanged(token);
     }
@@ -75,6 +76,7 @@ contract Vesting is IVesting, Ownable {
         address user
     ) external view returns (TokenVesting memory) {
         require(user != address(0), "Vesting: Invalid user address");
+        require(vested, "Vesting: Vestings not started");
         return _usersToVestings[user];
     }
 
@@ -161,9 +163,10 @@ contract Vesting is IVesting, Ownable {
     function _startVesting(address to, uint256 amount) private onlyOwner {
         require(to != address(0), "Vesting: Invalid user address");
         require(amount != 0, "Vesting: Invalid amount");
-    function _startVesting(
-        address to,
-        uint256 amount
+
+        // Create a new vesting
+        TokenVesting memory vesting = TokenVesting({
+            status: VestingStatus.InProgress,
             to: to,
             amount: amount,
             amountClaimed: 0,

@@ -16,6 +16,7 @@ const treasuryAddress = process.env.TREASURY_ADDRESS;
 const rewardsAddress = process.env.REWARDS_ADDRESS;
 
 const initialHolders = process.env.INITIAL_HOLDERS.split(", ");
+const whitelistedDexes = process.env.WHITELISTED_DEXES.split(", ");
 
 let contractName;
 let token;
@@ -115,9 +116,25 @@ async function main() {
     console.log(`[${contractName}]: Verification Finished!`);
 
     // ====================================================
+
+    // Add DEXes to the whitelist
+    console.log("\nAdding DEXes to the whitelist...");
+    for (let i = 0; i < whitelistedDexes.length; i++) {
+        console.log(`Adding: ${whitelistedDexes[i]}`);
+        let tx = await token.addToWhitelist(whitelistedDexes[i]);
+        // Wait for the tx to mine to avoid "Replacement fee too low" error
+        await tx.wait();
+    }
+    console.log("All DEXes have been whitelisted!");
+
     // Add token address and start vestings
+    console.log("Setting BORROE token address for vesting...");
     await vesting.setToken(token.address);
-    await vesting.startInitialVestings(initialHolders);
+    console.log("BORROE token set!");
+    console.log("\nStarting vesting...");
+    tx = await vesting.startInitialVestings(initialHolders);
+    await tx.wait();
+    console.log("Vesting started!");
 
     // ====================================================
 
