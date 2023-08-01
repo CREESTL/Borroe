@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.12;
+pragma solidity 0.8.17;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -161,7 +161,7 @@ contract BORROE is IBorroe, ERC20, Ownable {
         address to,
         uint256 amount
     ) public override(ERC20, IERC20) returns (bool) {
-        address owner = _msgSender();
+        address owner = msg.sender;
 
         // Charge and distribute fees if destination address is whitelisted
         if (_whitelist[to]) {
@@ -180,7 +180,7 @@ contract BORROE is IBorroe, ERC20, Ownable {
         address to,
         uint256 amount
     ) public override(ERC20, IERC20) returns (bool) {
-        address spender = _msgSender();
+        address spender = msg.sender;
         _spendAllowance(from, spender, amount);
 
         // Charge and distribute fees if destination address is whitelisted
