@@ -1,4 +1,4 @@
-# BORROE
+# Borroe
 
 
 
@@ -61,10 +61,27 @@ function TO_LIQUIDITY_POOL() external view returns (uint256)
 |---|---|---|
 | _0 | uint256 | undefined |
 
-### TO_LOCK
+### TO_LOCK_PARTNERS
 
 ```solidity
-function TO_LOCK() external view returns (uint256)
+function TO_LOCK_PARTNERS() external view returns (uint256)
+```
+
+
+
+
+
+
+#### Returns
+
+| Name | Type | Description |
+|---|---|---|
+| _0 | uint256 | undefined |
+
+### TO_LOCK_TEAM
+
+```solidity
+function TO_LOCK_TEAM() external view returns (uint256)
 ```
 
 

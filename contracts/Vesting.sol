@@ -7,12 +7,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./interfaces/IVesting.sol";
-import "./interfaces/IBorroe.sol";
+import "./Borroe.sol";
 
 /// @title The contract for BORROE tokens vesting
 contract Vesting is IVesting, Ownable {
     using SafeERC20 for ERC20;
-
     /// @dev Used to convert from BPs to percents and vice versa
     uint256 private constant _BP_CONVERTER = 1e4;
 
@@ -28,8 +27,13 @@ contract Vesting is IVesting, Ownable {
     /// @notice The BORROE token address
     address public borroe;
 
-    /// @dev List of initial token holders
+    /// @dev List of initial token holders taking part in vesting
     address[] private _initialHolders;
+
+    /// @dev Address of team wallet to lock tokens for
+    address private immutable _team;
+    /// @dev Address of partners wallet to lock tokens for
+    address private immutable _partners;
 
     /// @notice True if initial vestings have started
     ///         Vestings can only start once
@@ -42,25 +46,53 @@ contract Vesting is IVesting, Ownable {
 
     /// @param initialHolders The list of addresses of initial token holders that
     ///        will receive tokens after vesting
-    constructor(address[] memory initialHolders) {
+    /// @param team The address of team wallet to lock tokens for 2 years for
+    /// @param partners The address of partners wallet to lock tokens for 2 years for
+    constructor(
+        address[] memory initialHolders,
+        address team,
+        address partners
+    ) {
         require(initialHolders.length > 0, "Vesting: No initial holders");
+        require(team != address(0), "Vesting: Invalid team address");
+        require(partners != address(0), "Vesting: Invalid partners address");
         _initialHolders = initialHolders;
+        _team = team;
+        _partners = partners;
     }
 
     /// @notice See {IVesting-startInitialVestings}
-    function startInitialVestings(
-        address[] memory initialHolders
-    ) external onlyOwner ifNotVested {
+    function startInitialVestings() external onlyOwner ifNotVested {
         require(borroe != address(0), "Vesting: Invalid token address");
-        // All holders receive the same share
+
         uint256 borroeBalance = IBorroe(borroe).balanceOf(address(this));
         require(borroeBalance > 1, "Vesting: Insufficient balance");
-        uint256 holderShare = borroeBalance / initialHolders.length;
+        uint256 borroeTotalSupply = Borroe(borroe).totalSupply();
+
         vested = true;
-        for (uint256 i = 0; i < initialHolders.length; i++) {
-            address holder = initialHolders[i];
-            _startVesting(holder, holderShare);
+
+        // Start 3 months vestings for each initial holder
+        uint256 percentsToVest = (borroeTotalSupply *
+            Borroe(borroe).TO_VESTING()) / borroeBalance;
+        uint256 toVest = (borroeBalance * percentsToVest) / _BP_CONVERTER;
+        uint256 holderShare = toVest / _initialHolders.length;
+        for (uint256 i = 0; i < _initialHolders.length; i++) {
+            address holder = _initialHolders[i];
+            _startVesting(holder, holderShare, 3, 1 days * 30);
         }
+
+        // Start 24 months vestings for team and partners
+        uint256 percentsToLockForTeam = (borroeTotalSupply *
+            Borroe(borroe).TO_LOCK_TEAM()) / borroeBalance;
+        uint256 toLockForTeam = (borroeBalance * percentsToLockForTeam) /
+            _BP_CONVERTER;
+        uint256 percentsToLockForPartners = (borroeTotalSupply *
+            Borroe(borroe).TO_LOCK_PARTNERS()) / borroeBalance;
+        uint256 toLockForPartners = (borroeBalance *
+            percentsToLockForPartners) / _BP_CONVERTER;
+        // This is, effectively, locking
+        _startVesting(_team, toLockForTeam, 1, 1 days * 30 * 24);
+        _startVesting(_partners, toLockForPartners, 1, 1 days * 30 * 24);
     }
 
     /// @notice See {IVesting-setToken}
@@ -110,8 +142,7 @@ contract Vesting is IVesting, Ownable {
 
         // Calculate the number of periods since start
         uint256 timeSinceStart = block.timestamp - vesting.startTime;
-        // Each claim period is one month. Cannot be changed
-        uint256 onePeriod = 1 days * 30;
+        uint256 onePeriod = vesting.periodDuration;
         uint256 periodsSinceStart = timeSinceStart / onePeriod;
 
         // If user has already claimed current vesting in current period - no tokens can be claimed
@@ -160,9 +191,18 @@ contract Vesting is IVesting, Ownable {
     /// @dev Starts a single vesting for the user
     /// @param to The receiver of tokens
     /// @param amount The amount of tokens to vest
-    function _startVesting(address to, uint256 amount) private onlyOwner {
+    /// @param periods The amount of vesting periods
+    /// @param periodDuration The duration of each period
+    function _startVesting(
+        address to,
+        uint256 amount,
+        uint256 periods,
+        uint256 periodDuration
+    ) private onlyOwner {
         require(to != address(0), "Vesting: Invalid user address");
         require(amount != 0, "Vesting: Invalid amount");
+        require(periods != 0, "Vesting: Invalid number of periods");
+        require(periodDuration != 0, "Vesting: Invalid period duration");
 
         // Create a new vesting
         TokenVesting memory vesting = TokenVesting({
@@ -171,8 +211,8 @@ contract Vesting is IVesting, Ownable {
             amount: amount,
             amountClaimed: 0,
             startTime: block.timestamp,
-            // Each vesting lasts for 3 months
-            claimablePeriods: 3,
+            claimablePeriods: periods,
+            periodDuration: periodDuration,
             lastClaimedPeriod: 0
         });
 
