@@ -23,6 +23,8 @@ interface IVesting {
         uint256 startTime;
         // The number of periods in which user can claim tokens
         uint256 claimablePeriods;
+        // The duration of each period
+        uint256 periodDuration;
         // The number of the last period a user has claimed tokens
         uint256 lastClaimedPeriod;
     }
@@ -44,11 +46,9 @@ interface IVesting {
     /// @param token The new address of the BORROE address
     function setToken(address token) external;
 
-    /// @dev Starts initial vestings for the list of holders.
-    ///      All BORROE tokens on this contract are vested
-    ///      Vestings can only happen once
-    /// @param initialHolders The list of holders to receive vested tokens
-    function startInitialVestings(address[] memory initialHolders) external;
+    /// @notice Starts 3 months vestings for initial token holders.
+    ///         Locks tokens for 2 years for team and partners.
+    function startInitialVestings() external;
 
     /// @notice Returns information about the user's vesting
     /// @param user The address of the user

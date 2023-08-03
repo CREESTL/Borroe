@@ -19,17 +19,16 @@ let marketingAddress = "0xfDefD8489B79b5b81A7901B6B9aCf7730F4AdA07";
 let treasuryAddress = "0xEED7870BBbb6aCE5C38b3CC8b23Eee2a6aCBC7aF";
 let rewardsAddress = "0xAcf91E19290191Fc051Ca9E2181b980EE3fBF2aF";
 
-let percentsToVesting = 5000;
-let percentsToLock = 750;
-let percentsToLiquidityPool = 1000;
-let percentsToExchangeListing = 1000;
-let percentsToMarketing = 1000;
-let percentsToTreasury = 1000;
-let percentsToRewards = 250;
-
+let partners;
+let team;
+let initialHolders;
+let holderShare;
+let toLockForTeam;
+let toLockForPartners;
 let BP_CONVERTER = 1e4;
 
-let initialHolders;
+let oneDay = 3600 * 24;
+let oneMonth = oneDay * 30;
 
 // Impersonate vesting contract and send some native tokens to it.
 // Then transfer minted BORROE tokens from vesting to owner
@@ -58,7 +57,7 @@ async function fundOwner(token, transferAmount) {
 describe("Vesting", () => {
     // Deploy all contracts before each test suite
     async function deploys() {
-        [ownerAcc, clientAcc1, clientAcc2, clientAcc3] =
+        [ownerAcc, clientAcc1, clientAcc2, clientAcc3, clientAcc4, clientAcc5] =
             await ethers.getSigners();
 
         initialHolders = [
@@ -67,16 +66,22 @@ describe("Vesting", () => {
             clientAcc3.address,
         ];
 
+        team = clientAcc4;
+        partners = clientAcc5;
+
         // Deploy vesting
         let vestingFactory = await ethers.getContractFactory("Vesting");
-        let vesting = await vestingFactory.deploy(initialHolders);
+        let vesting = await vestingFactory.deploy(
+            initialHolders,
+            team.address,
+            partners.address
+        );
         await vesting.deployed();
 
         // Deploy token
-        let tokenFactory = await ethers.getContractFactory("BORROE");
+        let tokenFactory = await ethers.getContractFactory("Borroe");
         let token = await tokenFactory.deploy(
             vesting.address,
-            lockAddress,
             liquidityPoolAddress,
             exchangeListingAddress,
             marketingAddress,
@@ -86,6 +91,28 @@ describe("Vesting", () => {
         await token.deployed();
 
         await vesting.setToken(token.address);
+
+        let percentsToVest = (await token.totalSupply())
+            .mul(await token.TO_VESTING())
+            .div(await token.balanceOf(vesting.address));
+        let toVest = (await token.balanceOf(vesting.address))
+            .mul(percentsToVest)
+            .div(BP_CONVERTER);
+        holderShare = toVest.div(initialHolders.length);
+
+        let percentsToLockForTeam = (await token.totalSupply())
+            .mul(await token.TO_LOCK_TEAM())
+            .div(await token.balanceOf(vesting.address));
+        toLockForTeam = (await token.balanceOf(vesting.address))
+            .mul(percentsToLockForTeam)
+            .div(BP_CONVERTER);
+
+        let percentsToLockForPartners = (await token.totalSupply())
+            .mul(await token.TO_LOCK_PARTNERS())
+            .div(await token.balanceOf(vesting.address));
+        toLockForPartners = (await token.balanceOf(vesting.address))
+            .mul(percentsToLockForPartners)
+            .div(BP_CONVERTER);
 
         return {
             vesting,
@@ -105,9 +132,33 @@ describe("Vesting", () => {
                 let newVestingFactory = await ethers.getContractFactory(
                     "Vesting"
                 );
-                await expect(newVestingFactory.deploy([])).to.be.revertedWith(
-                    "Vesting: No initial holders"
+                await expect(
+                    newVestingFactory.deploy([], team.address, partners.address)
+                ).to.be.revertedWith("Vesting: No initial holders");
+            });
+            it("Should fail to deploy if zero address team", async () => {
+                let newVestingFactory = await ethers.getContractFactory(
+                    "Vesting"
                 );
+                await expect(
+                    newVestingFactory.deploy(
+                        initialHolders,
+                        zeroAddress,
+                        partners.address
+                    )
+                ).to.be.revertedWith("Vesting: Invalid team address");
+            });
+            it("Should fail to deploy if zero address team", async () => {
+                let newVestingFactory = await ethers.getContractFactory(
+                    "Vesting"
+                );
+                await expect(
+                    newVestingFactory.deploy(
+                        initialHolders,
+                        team.address,
+                        zeroAddress
+                    )
+                ).to.be.revertedWith("Vesting: Invalid partners address");
             });
         });
     });
@@ -117,11 +168,9 @@ describe("Vesting", () => {
             it("Should forbid vesting twice", async () => {
                 let { vesting, token } = await loadFixture(deploys);
 
-                await vesting.startInitialVestings(initialHolders);
+                await vesting.startInitialVestings();
 
-                await expect(
-                    vesting.startInitialVestings(initialHolders)
-                ).to.be.revertedWith(
+                await expect(vesting.startInitialVestings()).to.be.revertedWith(
                     "Vesting: Initial vestings already started"
                 );
             });
@@ -133,28 +182,45 @@ describe("Vesting", () => {
             it("Should get user's vesting", async () => {
                 let { vesting, token } = await loadFixture(deploys);
 
-                await vesting.startInitialVestings(initialHolders);
+                await vesting.startInitialVestings();
 
                 let [
-                    status,
-                    to,
-                    amount,
-                    amountClaimed,
-                    startTime,
-                    claimablePeriods,
-                    lastClaimedPeriod,
+                    status1,
+                    to1,
+                    amount1,
+                    amountClaimed1,
+                    startTime1,
+                    claimablePeriods1,
+                    periodDuration1,
+                    lastClaimedPeriod1,
                 ] = await vesting.getUserVesting(clientAcc1.address);
 
-                let expectedAmount = (
-                    await token.balanceOf(vesting.address)
-                ).div(initialHolders.length);
+                let [
+                    status2,
+                    to2,
+                    amount2,
+                    amountClaimed2,
+                    startTime2,
+                    claimablePeriods2,
+                    periodDuration2,
+                    lastClaimedPeriod2,
+                ] = await vesting.getUserVesting(team.address);
 
-                expect(status).to.equal(0);
-                expect(to).to.equal(clientAcc1.address);
-                expect(amount).to.equal(expectedAmount);
-                expect(amountClaimed).to.equal(0);
-                expect(claimablePeriods).to.equal(3);
-                expect(lastClaimedPeriod).to.equal(0);
+                expect(status1).to.equal(0);
+                expect(to1).to.equal(clientAcc1.address);
+                expect(amount1).to.equal(holderShare);
+                expect(amountClaimed1).to.equal(0);
+                expect(claimablePeriods1).to.equal(3);
+                expect(periodDuration1).to.equal(oneMonth);
+                expect(lastClaimedPeriod1).to.equal(0);
+
+                expect(status2).to.equal(0);
+                expect(to2).to.equal(team.address);
+                expect(amount2).to.equal(toLockForTeam);
+                expect(amountClaimed2).to.equal(0);
+                expect(claimablePeriods2).to.equal(1);
+                expect(periodDuration2).to.equal(oneMonth * 24);
+                expect(lastClaimedPeriod2).to.equal(0);
             });
 
             describe("Fails", () => {
@@ -218,14 +284,11 @@ describe("Vesting", () => {
             it("Should start vestings for all holders", async () => {
                 let { vesting, token } = await loadFixture(deploys);
 
-                let holderShare = (await token.balanceOf(vesting.address)).div(
-                    initialHolders.length
-                );
-
                 expect(await vesting.vested()).to.equal(false);
-                await expect(
-                    vesting.startInitialVestings(initialHolders)
-                ).to.emit(vesting, "VestingStarted");
+                await expect(vesting.startInitialVestings()).to.emit(
+                    vesting,
+                    "VestingStarted"
+                );
                 expect(await vesting.vested()).to.equal(true);
 
                 let [
@@ -235,6 +298,7 @@ describe("Vesting", () => {
                     amountClaimed1,
                     startTime1,
                     claimablePeriods1,
+                    periodDuration1,
                     lastClaimedPeriod1,
                 ] = await vesting.getUserVesting(clientAcc1.address);
 
@@ -243,6 +307,7 @@ describe("Vesting", () => {
                 expect(amount1).to.equal(holderShare);
                 expect(amountClaimed1).to.equal(0);
                 expect(claimablePeriods1).to.equal(3);
+                expect(periodDuration1).to.equal(oneMonth);
                 expect(lastClaimedPeriod1).to.equal(0);
 
                 let [
@@ -252,6 +317,7 @@ describe("Vesting", () => {
                     amountClaimed2,
                     startTime2,
                     claimablePeriods2,
+                    periodDuration2,
                     lastClaimedPeriod2,
                 ] = await vesting.getUserVesting(clientAcc2.address);
 
@@ -259,6 +325,7 @@ describe("Vesting", () => {
                 expect(to2).to.equal(clientAcc2.address);
                 expect(amount2).to.equal(holderShare);
                 expect(amountClaimed2).to.equal(0);
+                expect(periodDuration2).to.equal(oneMonth);
                 expect(claimablePeriods2).to.equal(3);
                 expect(lastClaimedPeriod2).to.equal(0);
 
@@ -269,6 +336,7 @@ describe("Vesting", () => {
                     amountClaimed3,
                     startTime3,
                     claimablePeriods3,
+                    periodDuration3,
                     lastClaimedPeriod3,
                 ] = await vesting.getUserVesting(clientAcc3.address);
 
@@ -276,8 +344,28 @@ describe("Vesting", () => {
                 expect(to3).to.equal(clientAcc3.address);
                 expect(amount3).to.equal(holderShare);
                 expect(amountClaimed3).to.equal(0);
+                expect(periodDuration3).to.equal(oneMonth);
                 expect(claimablePeriods3).to.equal(3);
                 expect(lastClaimedPeriod3).to.equal(0);
+
+                let [
+                    status4,
+                    to4,
+                    amount4,
+                    amountClaimed4,
+                    startTime4,
+                    claimablePeriods4,
+                    periodDuration4,
+                    lastClaimedPeriod4,
+                ] = await vesting.getUserVesting(team.address);
+
+                expect(status4).to.equal(0);
+                expect(to4).to.equal(team.address);
+                expect(amount4).to.equal(toLockForTeam);
+                expect(amountClaimed4).to.equal(0);
+                expect(claimablePeriods4).to.equal(1);
+                expect(periodDuration4).to.equal(oneMonth * 24);
+                expect(lastClaimedPeriod4).to.equal(0);
             });
 
             describe("Fails", () => {
@@ -286,16 +374,17 @@ describe("Vesting", () => {
                         "Vesting"
                     );
                     let newVesting = await newVestingFactory.deploy(
-                        initialHolders
+                        initialHolders,
+                        team.address,
+                        partners.address
                     );
                     await newVesting.deployed();
 
                     let newTokenFactory = await ethers.getContractFactory(
-                        "BORROE"
+                        "Borroe"
                     );
                     let newToken = await newTokenFactory.deploy(
                         newVesting.address,
-                        lockAddress,
                         liquidityPoolAddress,
                         exchangeListingAddress,
                         marketingAddress,
@@ -305,7 +394,7 @@ describe("Vesting", () => {
                     await newToken.deployed();
 
                     await expect(
-                        newVesting.startInitialVestings(initialHolders)
+                        newVesting.startInitialVestings()
                     ).to.be.revertedWith("Vesting: Invalid token address");
                 });
                 it("Should fail to start vesting if zero balance", async () => {
@@ -320,261 +409,413 @@ describe("Vesting", () => {
                     await vesting.setToken(mockToken.address);
 
                     await expect(
-                        vesting.startInitialVestings(initialHolders)
+                        vesting.startInitialVestings()
                     ).to.be.revertedWith("Vesting: Insufficient balance");
                 });
             });
         });
         describe("Claim tokens", () => {
-            describe("For one holder", () => {
-                describe("During first period", () => {
-                    it("Should claim correct token amount", async () => {
-                        let { vesting, token } = await loadFixture(deploys);
+            describe("Vesting", () => {
+                describe("For one holder", () => {
+                    describe("During first period", () => {
+                        it("Should claim correct token amount", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
 
-                        await vesting.startInitialVestings(initialHolders);
+                            await vesting.startInitialVestings();
 
-                        let holderShare = (
-                            await token.balanceOf(vesting.address)
-                        ).div(initialHolders.length);
-                        let holderSharePerMonth = holderShare.div(3);
+                            let holderSharePerMonth = holderShare.div(3);
 
-                        let clientStartBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
+                            let clientStartBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
 
-                        // Wait 10 days
-                        let oneDay = 3600 * 24;
-                        await time.increase(oneDay * 10);
-                        await vesting.connect(clientAcc1).claimTokens();
+                            // Wait 10 days
+                            await time.increase(oneDay * 10);
+                            await vesting.connect(clientAcc1).claimTokens();
 
-                        let clientEndBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
+                            let clientEndBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
 
-                        expect(clientEndBalance1).to.equal(clientStartBalance1);
+                            expect(clientEndBalance1).to.equal(
+                                clientStartBalance1
+                            );
 
-                        let [
-                            status1,
-                            to1,
-                            amount1,
-                            amountClaimed1,
-                            startTime1,
-                            claimablePeriods1,
-                            lastClaimedPeriod1,
-                        ] = await vesting.getUserVesting(clientAcc1.address);
+                            let [
+                                status1,
+                                to1,
+                                amount1,
+                                amountClaimed1,
+                                startTime1,
+                                claimablePeriods1,
+                                periodDuration1,
+                                lastClaimedPeriod1,
+                            ] = await vesting.getUserVesting(
+                                clientAcc1.address
+                            );
 
-                        expect(status1).to.equal(0);
-                        expect(to1).to.equal(clientAcc1.address);
-                        expect(amount1).to.equal(holderShare);
-                        expect(amountClaimed1).to.equal(0);
-                        expect(claimablePeriods1).to.equal(3);
-                        expect(lastClaimedPeriod1).to.equal(0);
+                            expect(status1).to.equal(0);
+                            expect(to1).to.equal(clientAcc1.address);
+                            expect(amount1).to.equal(holderShare);
+                            expect(amountClaimed1).to.equal(0);
+                            expect(claimablePeriods1).to.equal(3);
+                            expect(periodDuration1).to.equal(oneMonth);
+                            expect(lastClaimedPeriod1).to.equal(0);
+                        });
+                    });
+                    describe("After first period", () => {
+                        it("Should claim correct token amount", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
+
+                            await vesting.startInitialVestings();
+
+                            let holderSharePerMonth = holderShare.div(3);
+
+                            let clientStartBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            // Wait 30 days
+                            await time.increase(oneDay * 30);
+                            await expect(
+                                vesting.connect(clientAcc1).claimTokens()
+                            ).to.emit(vesting, "VestingClaimed");
+
+                            let clientEndBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            expect(clientEndBalance1).to.equal(
+                                clientStartBalance1.add(holderSharePerMonth)
+                            );
+
+                            let [
+                                status1,
+                                to1,
+                                amount1,
+                                amountClaimed1,
+                                startTime1,
+                                claimablePeriods1,
+                                periodDuration1,
+                                lastClaimedPeriod1,
+                            ] = await vesting.getUserVesting(
+                                clientAcc1.address
+                            );
+
+                            expect(status1).to.equal(0);
+                            expect(to1).to.equal(clientAcc1.address);
+                            expect(amount1).to.equal(holderShare);
+                            expect(amountClaimed1).to.equal(
+                                holderSharePerMonth
+                            );
+                            expect(claimablePeriods1).to.equal(3);
+                            expect(periodDuration1).to.equal(oneMonth);
+                            expect(lastClaimedPeriod1).to.equal(1);
+                        });
+                        it("Should not claim the same period twice", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
+
+                            await vesting.startInitialVestings();
+
+                            let holderSharePerMonth = holderShare.div(3);
+
+                            let clientStartBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            // Wait 30 days
+                            await time.increase(oneDay * 30);
+                            await expect(
+                                vesting.connect(clientAcc1).claimTokens()
+                            ).to.emit(vesting, "VestingClaimed");
+                            await vesting.connect(clientAcc1).claimTokens();
+
+                            let clientEndBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            expect(clientEndBalance1).to.equal(
+                                clientStartBalance1.add(holderSharePerMonth)
+                            );
+                        });
+                    });
+                    describe("After all periods", () => {
+                        it("Should claim correct token amount", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
+
+                            await vesting.startInitialVestings();
+
+                            let holderSharePerMonth = holderShare.div(3);
+
+                            let clientStartBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            // Wait 90 days
+                            await time.increase(oneDay * 90);
+                            await vesting.connect(clientAcc1).claimTokens();
+
+                            let clientEndBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            expect(clientEndBalance1).to.equal(
+                                clientStartBalance1.add(
+                                    holderSharePerMonth.mul(3)
+                                )
+                            );
+
+                            let [
+                                status1,
+                                to1,
+                                amount1,
+                                amountClaimed1,
+                                startTime1,
+                                claimablePeriods1,
+                                periodDuration1,
+                                lastClaimedPeriod1,
+                            ] = await vesting.getUserVesting(
+                                clientAcc1.address
+                            );
+
+                            expect(status1).to.equal(1);
+                            expect(to1).to.equal(clientAcc1.address);
+                            expect(amount1).to.equal(holderShare);
+                            expect(amountClaimed1).to.equal(
+                                holderSharePerMonth.mul(3)
+                            );
+                            expect(claimablePeriods1).to.equal(3);
+                            expect(periodDuration1).to.equal(oneMonth);
+                            expect(lastClaimedPeriod1).to.equal(3);
+                        });
+                    });
+                    describe("Long after all periods", () => {
+                        it("Should claim correct token amount", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
+
+                            await vesting.startInitialVestings();
+
+                            let holderSharePerMonth = holderShare.div(3);
+
+                            let clientStartBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            // Wait 365 days
+                            await time.increase(oneDay * 365);
+                            await vesting.connect(clientAcc1).claimTokens();
+
+                            let clientEndBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+
+                            expect(clientEndBalance1).to.equal(
+                                clientStartBalance1.add(
+                                    holderSharePerMonth.mul(3)
+                                )
+                            );
+                        });
                     });
                 });
-                describe("After first period", () => {
-                    it("Should claim correct token amount", async () => {
-                        let { vesting, token } = await loadFixture(deploys);
+                describe("For all holders", () => {
+                    describe("After all periods", () => {
+                        it("Should claim correct token amount", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
 
-                        await vesting.startInitialVestings(initialHolders);
+                            await vesting.startInitialVestings();
 
-                        let holderShare = (
-                            await token.balanceOf(vesting.address)
-                        ).div(initialHolders.length);
-                        let holderSharePerMonth = holderShare.div(3);
+                            let holderSharePerMonth = holderShare.div(3);
 
-                        let clientStartBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
+                            let clientStartBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+                            let clientStartBalance2 = await token.balanceOf(
+                                clientAcc2.address
+                            );
+                            let clientStartBalance3 = await token.balanceOf(
+                                clientAcc3.address
+                            );
 
-                        // Wait 30 days
-                        let oneDay = 3600 * 24;
-                        await time.increase(oneDay * 30);
-                        await expect(
-                            vesting.connect(clientAcc1).claimTokens()
-                        ).to.emit(vesting, "VestingClaimed");
+                            // Wait 365 days
+                            await time.increase(oneDay * 365);
+                            await vesting.connect(clientAcc1).claimTokens();
+                            await vesting.connect(clientAcc2).claimTokens();
+                            await vesting.connect(clientAcc3).claimTokens();
 
-                        let clientEndBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
+                            let clientEndBalance1 = await token.balanceOf(
+                                clientAcc1.address
+                            );
+                            let clientEndBalance2 = await token.balanceOf(
+                                clientAcc2.address
+                            );
+                            let clientEndBalance3 = await token.balanceOf(
+                                clientAcc3.address
+                            );
 
-                        expect(clientEndBalance1).to.equal(
-                            clientStartBalance1.add(holderSharePerMonth)
-                        );
-
-                        let [
-                            status1,
-                            to1,
-                            amount1,
-                            amountClaimed1,
-                            startTime1,
-                            claimablePeriods1,
-                            lastClaimedPeriod1,
-                        ] = await vesting.getUserVesting(clientAcc1.address);
-
-                        expect(status1).to.equal(0);
-                        expect(to1).to.equal(clientAcc1.address);
-                        expect(amount1).to.equal(holderShare);
-                        expect(amountClaimed1).to.equal(holderSharePerMonth);
-                        expect(claimablePeriods1).to.equal(3);
-                        expect(lastClaimedPeriod1).to.equal(1);
-                    });
-                    it("Should not claim the same period twice", async () => {
-                        let { vesting, token } = await loadFixture(deploys);
-
-                        await vesting.startInitialVestings(initialHolders);
-
-                        let holderShare = (
-                            await token.balanceOf(vesting.address)
-                        ).div(initialHolders.length);
-                        let holderSharePerMonth = holderShare.div(3);
-
-                        let clientStartBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-
-                        // Wait 30 days
-                        let oneDay = 3600 * 24;
-                        await time.increase(oneDay * 30);
-                        await expect(
-                            vesting.connect(clientAcc1).claimTokens()
-                        ).to.emit(vesting, "VestingClaimed");
-                        await vesting.connect(clientAcc1).claimTokens();
-
-                        let clientEndBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-
-                        expect(clientEndBalance1).to.equal(
-                            clientStartBalance1.add(holderSharePerMonth)
-                        );
-                    });
-                });
-                describe("After all periods", () => {
-                    it("Should claim correct token amount", async () => {
-                        let { vesting, token } = await loadFixture(deploys);
-
-                        await vesting.startInitialVestings(initialHolders);
-
-                        let holderShare = (
-                            await token.balanceOf(vesting.address)
-                        ).div(initialHolders.length);
-                        let holderSharePerMonth = holderShare.div(3);
-
-                        let clientStartBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-
-                        // Wait 90 days
-                        let oneDay = 3600 * 24;
-                        await time.increase(oneDay * 90);
-                        await vesting.connect(clientAcc1).claimTokens();
-
-                        let clientEndBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-
-                        expect(clientEndBalance1).to.equal(
-                            clientStartBalance1.add(holderSharePerMonth.mul(3))
-                        );
-
-                        let [
-                            status1,
-                            to1,
-                            amount1,
-                            amountClaimed1,
-                            startTime1,
-                            claimablePeriods1,
-                            lastClaimedPeriod1,
-                        ] = await vesting.getUserVesting(clientAcc1.address);
-
-                        expect(status1).to.equal(1);
-                        expect(to1).to.equal(clientAcc1.address);
-                        expect(amount1).to.equal(holderShare);
-                        expect(amountClaimed1).to.equal(
-                            holderSharePerMonth.mul(3)
-                        );
-                        expect(claimablePeriods1).to.equal(3);
-                        expect(lastClaimedPeriod1).to.equal(3);
-                    });
-                });
-                describe("Long after all periods", () => {
-                    it("Should claim correct token amount", async () => {
-                        let { vesting, token } = await loadFixture(deploys);
-
-                        await vesting.startInitialVestings(initialHolders);
-
-                        let holderShare = (
-                            await token.balanceOf(vesting.address)
-                        ).div(initialHolders.length);
-                        let holderSharePerMonth = holderShare.div(3);
-
-                        let clientStartBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-
-                        // Wait 365 days
-                        let oneDay = 3600 * 24;
-                        await time.increase(oneDay * 365);
-                        await vesting.connect(clientAcc1).claimTokens();
-
-                        let clientEndBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-
-                        expect(clientEndBalance1).to.equal(
-                            clientStartBalance1.add(holderSharePerMonth.mul(3))
-                        );
+                            expect(clientEndBalance1).to.equal(
+                                clientStartBalance1.add(
+                                    holderSharePerMonth.mul(3)
+                                )
+                            );
+                            expect(clientEndBalance2).to.equal(
+                                clientStartBalance2.add(
+                                    holderSharePerMonth.mul(3)
+                                )
+                            );
+                            expect(clientEndBalance3).to.equal(
+                                clientStartBalance3.add(
+                                    holderSharePerMonth.mul(3)
+                                )
+                            );
+                        });
                     });
                 });
             });
-            describe("For all holders", () => {
-                describe("After all periods", () => {
-                    it("Should claim correct token amount", async () => {
-                        let { vesting, token } = await loadFixture(deploys);
+            describe("Locking", () => {
+                describe("For all holders", () => {
+                    describe("Before unlock time", () => {
+                        it("Should not claim any tokens before unlock", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
 
-                        await vesting.startInitialVestings(initialHolders);
+                            await vesting.startInitialVestings();
 
-                        let holderShare = (
-                            await token.balanceOf(vesting.address)
-                        ).div(initialHolders.length);
-                        let holderSharePerMonth = holderShare.div(3);
+                            let holderSharePerMonth = holderShare.div(3);
 
-                        let clientStartBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-                        let clientStartBalance2 = await token.balanceOf(
-                            clientAcc2.address
-                        );
-                        let clientStartBalance3 = await token.balanceOf(
-                            clientAcc3.address
-                        );
+                            let teamStartBalance = await token.balanceOf(
+                                team.address
+                            );
+                            let partnersStartBalance = await token.balanceOf(
+                                partners.address
+                            );
 
-                        // Wait 365 days
-                        let oneDay = 3600 * 24;
-                        await time.increase(oneDay * 365);
-                        await vesting.connect(clientAcc1).claimTokens();
-                        await vesting.connect(clientAcc2).claimTokens();
-                        await vesting.connect(clientAcc3).claimTokens();
+                            // Wait 6 months
+                            await time.increase(oneMonth * 6);
+                            await vesting.connect(team).claimTokens();
+                            await vesting.connect(partners).claimTokens();
 
-                        let clientEndBalance1 = await token.balanceOf(
-                            clientAcc1.address
-                        );
-                        let clientEndBalance2 = await token.balanceOf(
-                            clientAcc2.address
-                        );
-                        let clientEndBalance3 = await token.balanceOf(
-                            clientAcc3.address
-                        );
+                            let teamEndBalance = await token.balanceOf(
+                                team.address
+                            );
+                            let partnersEndBalance = await token.balanceOf(
+                                partners.address
+                            );
 
-                        expect(clientEndBalance1).to.equal(
-                            clientStartBalance1.add(holderSharePerMonth.mul(3))
-                        );
-                        expect(clientEndBalance2).to.equal(
-                            clientStartBalance2.add(holderSharePerMonth.mul(3))
-                        );
-                        expect(clientEndBalance3).to.equal(
-                            clientStartBalance3.add(holderSharePerMonth.mul(3))
-                        );
+                            expect(teamEndBalance).to.equal(teamStartBalance);
+                            expect(partnersEndBalance).to.equal(
+                                partnersStartBalance
+                            );
+
+                            let [
+                                status1,
+                                to1,
+                                amount1,
+                                amountClaimed1,
+                                startTime1,
+                                claimablePeriods1,
+                                periodDuration1,
+                                lastClaimedPeriod1,
+                            ] = await vesting.getUserVesting(team.address);
+
+                            expect(status1).to.equal(0);
+                            expect(to1).to.equal(team.address);
+                            expect(amount1).to.equal(toLockForTeam);
+                            expect(amountClaimed1).to.equal(0);
+                            expect(claimablePeriods1).to.equal(1);
+                            expect(periodDuration1).to.equal(oneMonth * 24);
+                            expect(lastClaimedPeriod1).to.equal(0);
+
+                            let [
+                                status2,
+                                to2,
+                                amount2,
+                                amountClaimed2,
+                                startTime2,
+                                claimablePeriods2,
+                                periodDuration2,
+                                lastClaimedPeriod2,
+                            ] = await vesting.getUserVesting(partners.address);
+
+                            expect(status2).to.equal(0);
+                            expect(to2).to.equal(partners.address);
+                            expect(amount2).to.equal(toLockForPartners);
+                            expect(amountClaimed2).to.equal(0);
+                            expect(claimablePeriods2).to.equal(1);
+                            expect(periodDuration2).to.equal(oneMonth * 24);
+                            expect(lastClaimedPeriod2).to.equal(0);
+                        });
+                    });
+                    describe("After unlock time", () => {
+                        it("Should claim correct token amount", async () => {
+                            let { vesting, token } = await loadFixture(deploys);
+
+                            await vesting.startInitialVestings();
+
+                            let holderSharePerMonth = holderShare.div(3);
+
+                            let teamStartBalance = await token.balanceOf(
+                                team.address
+                            );
+                            let partnersStartBalance = await token.balanceOf(
+                                partners.address
+                            );
+
+                            // Wait 24 months
+                            await time.increase(oneMonth * 24);
+                            await vesting.connect(team).claimTokens();
+                            await vesting.connect(partners).claimTokens();
+
+                            let teamEndBalance = await token.balanceOf(
+                                team.address
+                            );
+                            let partnersEndBalance = await token.balanceOf(
+                                partners.address
+                            );
+
+                            expect(teamEndBalance).to.equal(
+                                teamStartBalance.add(toLockForTeam)
+                            );
+                            expect(partnersEndBalance).to.equal(
+                                partnersStartBalance.add(toLockForPartners)
+                            );
+
+                            let [
+                                status1,
+                                to1,
+                                amount1,
+                                amountClaimed1,
+                                startTime1,
+                                claimablePeriods1,
+                                periodDuration1,
+                                lastClaimedPeriod1,
+                            ] = await vesting.getUserVesting(team.address);
+
+                            expect(status1).to.equal(1);
+                            expect(to1).to.equal(team.address);
+                            expect(amount1).to.equal(toLockForTeam);
+                            expect(amountClaimed1).to.equal(toLockForTeam);
+                            expect(claimablePeriods1).to.equal(1);
+                            expect(periodDuration1).to.equal(oneMonth * 24);
+                            expect(lastClaimedPeriod1).to.equal(1);
+
+                            let [
+                                status2,
+                                to2,
+                                amount2,
+                                amountClaimed2,
+                                startTime2,
+                                claimablePeriods2,
+                                periodDuration2,
+                                lastClaimedPeriod2,
+                            ] = await vesting.getUserVesting(partners.address);
+
+                            expect(status2).to.equal(1);
+                            expect(to2).to.equal(partners.address);
+                            expect(amount2).to.equal(toLockForPartners);
+                            expect(amountClaimed2).to.equal(toLockForPartners);
+                            expect(claimablePeriods2).to.equal(1);
+                            expect(periodDuration2).to.equal(oneMonth * 24);
+                            expect(lastClaimedPeriod2).to.equal(1);
+                        });
                     });
                 });
             });
@@ -582,10 +823,9 @@ describe("Vesting", () => {
                 it("Should fail to claim twice", async () => {
                     let { vesting, token } = await loadFixture(deploys);
 
-                    await vesting.startInitialVestings(initialHolders);
+                    await vesting.startInitialVestings();
 
                     // Wait 100 days
-                    let oneDay = 3600 * 24;
                     await time.increase(oneDay * 100);
                     await vesting.connect(clientAcc1).claimTokens();
 

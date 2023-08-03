@@ -10,7 +10,6 @@ let BigNumber = ethers.BigNumber;
 
 // Just random address from Polygonscan
 let vestingAddress = "0xB2dD091EA6e591D62f565D7a18ce2a7640ADd227";
-let lockAddress = "0xb9EDE6f94D192073D8eaF85f8db677133d483249";
 let liquidityPoolAddress = "0x66d6D429080722397E274695Bb90e9f0c07f584B";
 let exchangeListingAddress = "0xCcBd9F738d5a17989DB6b4e414DB72aba5128F58";
 let marketingAddress = "0xfDefD8489B79b5b81A7901B6B9aCf7730F4AdA07";
@@ -57,10 +56,9 @@ describe("BORROE token", () => {
         [ownerAcc, clientAcc1, clientAcc2] = await ethers.getSigners();
 
         // Deploy token
-        let tokenFactory = await ethers.getContractFactory("BORROE");
+        let tokenFactory = await ethers.getContractFactory("Borroe");
         let token = await tokenFactory.deploy(
             vestingAddress,
-            lockAddress,
             liquidityPoolAddress,
             exchangeListingAddress,
             marketingAddress,
@@ -96,10 +94,7 @@ describe("BORROE token", () => {
             // Checks balances of all addresses where tokens should have
             // been preminted
             let expectedToVesting = expectedTotalSupply
-                .mul(percentsToVesting)
-                .div(BP_CONVERTER);
-            let expectedToLock = expectedTotalSupply
-                .mul(percentsToLock)
+                .mul(percentsToVesting + percentsToLock)
                 .div(BP_CONVERTER);
             let expectedToLiquidityPool = expectedTotalSupply
                 .mul(percentsToLiquidityPool)
@@ -120,7 +115,6 @@ describe("BORROE token", () => {
             expect(await token.balanceOf(vestingAddress)).to.equal(
                 expectedToVesting
             );
-            expect(await token.balanceOf(lockAddress)).to.equal(expectedToLock);
             expect(await token.balanceOf(liquidityPoolAddress)).to.equal(
                 expectedToLiquidityPool
             );
@@ -140,11 +134,10 @@ describe("BORROE token", () => {
 
         describe("Fails", () => {
             it("Should fail to deploy with zero vesting address", async () => {
-                let newTokenFactory = await ethers.getContractFactory("BORROE");
+                let newTokenFactory = await ethers.getContractFactory("Borroe");
                 await expect(
                     newTokenFactory.deploy(
                         zeroAddress,
-                        lockAddress,
                         liquidityPoolAddress,
                         exchangeListingAddress,
                         marketingAddress,
@@ -153,26 +146,11 @@ describe("BORROE token", () => {
                     )
                 ).to.be.revertedWith("BORROE: Invalid vesting address");
             });
-            it("Should fail to deploy with zero lock address", async () => {
-                let newTokenFactory = await ethers.getContractFactory("BORROE");
-                await expect(
-                    newTokenFactory.deploy(
-                        vestingAddress,
-                        zeroAddress,
-                        liquidityPoolAddress,
-                        exchangeListingAddress,
-                        marketingAddress,
-                        treasuryAddress,
-                        rewardsAddress
-                    )
-                ).to.be.revertedWith("BORROE: Invalid lock address");
-            });
             it("Should fail to deploy with zero liquidity pool address", async () => {
-                let newTokenFactory = await ethers.getContractFactory("BORROE");
+                let newTokenFactory = await ethers.getContractFactory("Borroe");
                 await expect(
                     newTokenFactory.deploy(
                         vestingAddress,
-                        lockAddress,
                         zeroAddress,
                         exchangeListingAddress,
                         marketingAddress,
@@ -182,11 +160,10 @@ describe("BORROE token", () => {
                 ).to.be.revertedWith("BORROE: Invalid liquidity pool address");
             });
             it("Should fail to deploy with zero exchange listing address", async () => {
-                let newTokenFactory = await ethers.getContractFactory("BORROE");
+                let newTokenFactory = await ethers.getContractFactory("Borroe");
                 await expect(
                     newTokenFactory.deploy(
                         vestingAddress,
-                        lockAddress,
                         liquidityPoolAddress,
                         zeroAddress,
                         marketingAddress,
@@ -198,11 +175,10 @@ describe("BORROE token", () => {
                 );
             });
             it("Should fail to deploy with zero marketing address", async () => {
-                let newTokenFactory = await ethers.getContractFactory("BORROE");
+                let newTokenFactory = await ethers.getContractFactory("Borroe");
                 await expect(
                     newTokenFactory.deploy(
                         vestingAddress,
-                        lockAddress,
                         liquidityPoolAddress,
                         exchangeListingAddress,
                         zeroAddress,
@@ -212,11 +188,10 @@ describe("BORROE token", () => {
                 ).to.be.revertedWith("BORROE: Invalid marketing address");
             });
             it("Should fail to deploy with zero treasury address", async () => {
-                let newTokenFactory = await ethers.getContractFactory("BORROE");
+                let newTokenFactory = await ethers.getContractFactory("Borroe");
                 await expect(
                     newTokenFactory.deploy(
                         vestingAddress,
-                        lockAddress,
                         liquidityPoolAddress,
                         exchangeListingAddress,
                         marketingAddress,
@@ -226,11 +201,10 @@ describe("BORROE token", () => {
                 ).to.be.revertedWith("BORROE: Invalid treasury address");
             });
             it("Should fail to deploy with zero rewards address", async () => {
-                let newTokenFactory = await ethers.getContractFactory("BORROE");
+                let newTokenFactory = await ethers.getContractFactory("Borroe");
                 await expect(
                     newTokenFactory.deploy(
                         vestingAddress,
-                        lockAddress,
                         liquidityPoolAddress,
                         exchangeListingAddress,
                         marketingAddress,

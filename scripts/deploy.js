@@ -8,12 +8,13 @@ require("dotenv").config();
 const fileName = "./deployOutput.json";
 const OUTPUT_DEPLOY = require(fileName);
 
-const lockAddress = process.env.LOCK_ADDRESS;
 const liquidityPoolAddress = process.env.LIQUIDITY_POOL_ADDRESS;
 const exchangeListingAddress = process.env.EXCHANGE_LISTING_ADDRESS;
 const marketingAddress = process.env.MARKETING_ADDRESS;
 const treasuryAddress = process.env.TREASURY_ADDRESS;
 const rewardsAddress = process.env.REWARDS_ADDRESS;
+const teamAddress = process.env.TEAM_ADDRESS;
+const partnersAddress = process.env.PARTNERS_ADDRESS;
 
 const initialHolders = process.env.INITIAL_HOLDERS.split(", ");
 const whitelistedDexes = process.env.WHITELISTED_DEXES.split(", ");
@@ -32,7 +33,11 @@ async function main() {
     contractName = "Vesting";
     console.log(`[${contractName}]: Start of Deployment...`);
     _contractProto = await ethers.getContractFactory(contractName);
-    contractDeployTx = await _contractProto.deploy(initialHolders);
+    contractDeployTx = await _contractProto.deploy(
+        initialHolders,
+        teamAddress,
+        partnersAddress
+    );
     vesting = await contractDeployTx.deployed();
     console.log(`[${contractName}]: Deployment Finished!`);
     OUTPUT_DEPLOY[network.name][contractName].address = vesting.address;
@@ -56,7 +61,11 @@ async function main() {
     try {
         await hre.run("verify:verify", {
             address: vesting.address,
-            constructorArguments: [initialHolders],
+            constructorArguments: [
+                initialHolders,
+                teamAddress,
+                partnersAddress,
+            ],
         });
     } catch (error) {
         console.error(error);
@@ -66,13 +75,11 @@ async function main() {
     // ====================================================
 
     // Contract #2: BORROE token
-
-    contractName = "BORROE";
+    contractName = "Borroe";
     console.log(`[${contractName}]: Start of Deployment...`);
     _contractProto = await ethers.getContractFactory(contractName);
     contractDeployTx = await _contractProto.deploy(
         vesting.address,
-        lockAddress,
         liquidityPoolAddress,
         exchangeListingAddress,
         marketingAddress,
@@ -102,7 +109,6 @@ async function main() {
             address: token.address,
             constructorArguments: [
                 vesting.address,
-                lockAddress,
                 liquidityPoolAddress,
                 exchangeListingAddress,
                 marketingAddress,
@@ -129,10 +135,11 @@ async function main() {
 
     // Add token address and start vestings
     console.log("Setting BORROE token address for vesting...");
-    await vesting.setToken(token.address);
+    tx = await vesting.setToken(token.address);
+    await tx.wait()
     console.log("BORROE token set!");
     console.log("\nStarting vesting...");
-    tx = await vesting.startInitialVestings(initialHolders);
+    tx = await vesting.startInitialVestings();
     await tx.wait();
     console.log("Vesting started!");
 

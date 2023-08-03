@@ -64,7 +64,7 @@ Deployment script takes about 5 minutes to complete. Please, be patient!
 After the contracts get deployed you can find their _addresses_ and code verification _URLs_ in the `scripts/deployOutput.json` file (see [Structure of Deploy Output File](#output)).  
 Note that this file only refreshes the addresses of contracts that have been successfully deployed (or redeployed). If you deploy only a single contract then its address would get updated and all other addresses would remain untouched and would link to _old_ contracts.  
 Please, **do not** write anything to `deployOutput.json` file yourself! It is a read-only file.  
-All deployed contracts _are verified_ on Etherscan.
+All deployed contracts _are verified_ on Polygonscan.
 
 <a name="networks"/>
 
@@ -74,14 +74,14 @@ All deployed contracts _are verified_ on Etherscan.
 Make sure you have _enough test tokens_ for testnet.
 
 ```
-npx hardhat run <script name here> --network ethereum_testnet
+npx hardhat run <script name here> --network polygon_testnet
 ```
 
 b) **Main** network  
 Make sure you have _enough real tokens_ in your wallet. Deployment to the mainnet costs money!
 
 ```
-npx hardhat run <script name here> --network ethereum_mainnet
+npx hardhat run <script name here> --network polygon_mainnet
 ```
 
 c) **Local** network
@@ -131,22 +131,61 @@ It is separated in 2 parts. Each of them represents deployment to testnet or mai
 Each part contains information about all deployed contracts:
 
 - The address of the contract (`address`)
-- The URL for Etherscan page with verified code of the contract (`verification`)
+- The URL for Polygonscan page with verified code of the contract (`verification`)
 
 <a name="logic"/>
 
 ## Logic
 
-### Terms
+#### BORROE Token
 
-### Logic Flow
+Name: BORRROE  
+Symbol: $ROE  
+Decimals: 18    
+Supply: 1 000 000 000  
 
-#### BORROE
+This is an ERC20 token with *premint* and custom transfer *fees*.  
+After token gets deployed, the following distribution happens:  
+- 57.5% of token supply move to Vesting contract
+- 10% of token supply move to Luquidity Pool 
+- 10% of token supply move to Exchange Listing wallet
+- 10% of token supply move to Marketing wallet
+- 10% of token supply move to Treasury
+- 2.5% of token supply move to Rewards wallet
+
+Token has a *whitelist* functionality implemented. When `N` tokens get transferred to an address from the whitelist, 3% of `N` get withdrawn as fees.
+The withdrawn amount is distibuted as follows:
+- 1% is burnt
+- 1% moves to Marketing wallet
+- 1% moves to Rewards wallet
+
+The intention is to add DEXes addresses to the whitelist. Thus, when creating orders on DEXes, users will pay fees (3% of order amount).  
+If tokens are transferred to any address not from the whitelist (for example, one user sends tokens to his friend), *no fees are withdrawn*
 
 #### Vesting
+
+This contract implements 2 types of vestings:
+1. 3-months vesting for the predetermined list of initial holders
+2. 24-months vesting for Team and Partners wallers (a.k.a *Locking*)
+
+After BORROE token gets deployed, 57.5% of token supply move to Vesting contract. 
+- 50% are distributed in 3-months vesting among initial holders
+- 5% are locked for 24 months for Team wallet
+- 2.5% are locked for 24 months for Partners wallet
+
+Initial holders take part in a linear vesting. That is, each month every holder can claim 1/3 of his total share of vested tokens.
+Team and Partners wallets can claim their total shares after 24 months since vesting has begun. They cannot claim tokens in portions like in a linear vesting.
 
 ---
 
 <a name="issues"/>
 
 **[Known Issues]**
+
+### Order of Deployment  
+Contracts should be deployed in the following order:  
+- Vesting  
+- Token  
+
+After that, a `setToken` function of Vesting contract should be called with the address of the deployed token as a parameter. Without this step, it would be impossible to start vesting.  
+This step is already done in `scripts/deploy.js` script.  
