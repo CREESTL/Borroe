@@ -92,26 +92,17 @@ describe("Vesting", () => {
 
         await vesting.setToken(token.address);
 
-        let percentsToVest = (await token.totalSupply())
+        toVest = (await token.maxTotalSupply())
             .mul(await token.TO_VESTING())
-            .div(await token.balanceOf(vesting.address));
-        let toVest = (await token.balanceOf(vesting.address))
-            .mul(percentsToVest)
             .div(BP_CONVERTER);
         holderShare = toVest.div(initialHolders.length);
 
-        let percentsToLockForTeam = (await token.totalSupply())
+        toLockForTeam = (await token.maxTotalSupply())
             .mul(await token.TO_LOCK_TEAM())
-            .div(await token.balanceOf(vesting.address));
-        toLockForTeam = (await token.balanceOf(vesting.address))
-            .mul(percentsToLockForTeam)
             .div(BP_CONVERTER);
 
-        let percentsToLockForPartners = (await token.totalSupply())
+        toLockForPartners = (await token.maxTotalSupply())
             .mul(await token.TO_LOCK_PARTNERS())
-            .div(await token.balanceOf(vesting.address));
-        toLockForPartners = (await token.balanceOf(vesting.address))
-            .mul(percentsToLockForPartners)
             .div(BP_CONVERTER);
 
         return {

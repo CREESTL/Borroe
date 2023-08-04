@@ -67,29 +67,19 @@ contract Vesting is IVesting, Ownable {
 
         uint256 borroeBalance = IBorroe(borroe).balanceOf(address(this));
         require(borroeBalance > 1, "Vesting: Insufficient balance");
-        uint256 borroeTotalSupply = Borroe(borroe).totalSupply();
 
         vested = true;
 
         // Start 3 months vestings for each initial holder
-        uint256 percentsToVest = (borroeTotalSupply *
-            Borroe(borroe).TO_VESTING()) / borroeBalance;
-        uint256 toVest = (borroeBalance * percentsToVest) / _BP_CONVERTER;
+        uint256 toVest = Borroe(borroe).maxTotalSupply() * Borroe(borroe).TO_VESTING() / _BP_CONVERTER;
         uint256 holderShare = toVest / _initialHolders.length;
         for (uint256 i = 0; i < _initialHolders.length; i++) {
             address holder = _initialHolders[i];
             _startVesting(holder, holderShare, 3, 1 days * 30);
         }
 
-        // Start 24 months vestings for team and partners
-        uint256 percentsToLockForTeam = (borroeTotalSupply *
-            Borroe(borroe).TO_LOCK_TEAM()) / borroeBalance;
-        uint256 toLockForTeam = (borroeBalance * percentsToLockForTeam) /
-            _BP_CONVERTER;
-        uint256 percentsToLockForPartners = (borroeTotalSupply *
-            Borroe(borroe).TO_LOCK_PARTNERS()) / borroeBalance;
-        uint256 toLockForPartners = (borroeBalance *
-            percentsToLockForPartners) / _BP_CONVERTER;
+        uint256 toLockForTeam = Borroe(borroe).maxTotalSupply() * Borroe(borroe).TO_LOCK_TEAM() / _BP_CONVERTER;
+        uint256 toLockForPartners = Borroe(borroe).maxTotalSupply() * Borroe(borroe).TO_LOCK_PARTNERS() / _BP_CONVERTER;
         // This is, effectively, locking
         _startVesting(_team, toLockForTeam, 1, 1 days * 30 * 24);
         _startVesting(_partners, toLockForPartners, 1, 1 days * 30 * 24);
