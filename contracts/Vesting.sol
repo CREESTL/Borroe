@@ -71,15 +71,18 @@ contract Vesting is IVesting, Ownable {
         vested = true;
 
         // Start 3 months vestings for each initial holder
-        uint256 toVest = Borroe(borroe).maxTotalSupply() * Borroe(borroe).TO_VESTING() / _BP_CONVERTER;
+        uint256 toVest = (Borroe(borroe).maxTotalSupply() *
+            Borroe(borroe).TO_VESTING()) / _BP_CONVERTER;
         uint256 holderShare = toVest / _initialHolders.length;
         for (uint256 i = 0; i < _initialHolders.length; i++) {
             address holder = _initialHolders[i];
             _startVesting(holder, holderShare, 3, 1 days * 30);
         }
 
-        uint256 toLockForTeam = Borroe(borroe).maxTotalSupply() * Borroe(borroe).TO_LOCK_TEAM() / _BP_CONVERTER;
-        uint256 toLockForPartners = Borroe(borroe).maxTotalSupply() * Borroe(borroe).TO_LOCK_PARTNERS() / _BP_CONVERTER;
+        uint256 toLockForTeam = (Borroe(borroe).maxTotalSupply() *
+            Borroe(borroe).TO_LOCK_TEAM()) / _BP_CONVERTER;
+        uint256 toLockForPartners = (Borroe(borroe).maxTotalSupply() *
+            Borroe(borroe).TO_LOCK_PARTNERS()) / _BP_CONVERTER;
         // This is, effectively, locking
         _startVesting(_team, toLockForTeam, 1, 1 days * 30 * 24);
         _startVesting(_partners, toLockForPartners, 1, 1 days * 30 * 24);

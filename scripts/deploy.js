@@ -136,7 +136,7 @@ async function main() {
     // Add token address and start vestings
     console.log("Setting BORROE token address for vesting...");
     tx = await vesting.setToken(token.address);
-    await tx.wait()
+    await tx.wait();
     console.log("BORROE token set!");
     console.log("\nStarting vesting...");
     tx = await vesting.startInitialVestings();
