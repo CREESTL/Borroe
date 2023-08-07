@@ -62,13 +62,18 @@ Change BORROE token address
 ### startInitialVestings
 
 ```solidity
-function startInitialVestings() external nonpayable
+function startInitialVestings(address[] initialHolders) external nonpayable
 ```
 
 Starts 3 months vestings for initial token holders.         Locks tokens for 2 years for team and partners.
 
 
 
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| initialHolders | address[] | The list of initial holders taking part in vesting |
 
 
 

@@ -27,9 +27,6 @@ contract Vesting is IVesting, Ownable {
     /// @notice The BORROE token address
     address public borroe;
 
-    /// @dev List of initial token holders taking part in vesting
-    address[] private _initialHolders;
-
     /// @dev Address of team wallet to lock tokens for
     address private immutable _team;
     /// @dev Address of partners wallet to lock tokens for
@@ -56,13 +53,15 @@ contract Vesting is IVesting, Ownable {
         require(initialHolders.length > 0, "Vesting: No initial holders");
         require(team != address(0), "Vesting: Invalid team address");
         require(partners != address(0), "Vesting: Invalid partners address");
-        _initialHolders = initialHolders;
+        initialHolders = initialHolders;
         _team = team;
         _partners = partners;
     }
 
     /// @notice See {IVesting-startInitialVestings}
-    function startInitialVestings() external onlyOwner ifNotVested {
+    function startInitialVestings(
+        address[] memory initialHolders
+    ) external onlyOwner ifNotVested {
         require(borroe != address(0), "Vesting: Invalid token address");
 
         uint256 borroeBalance = IBorroe(borroe).balanceOf(address(this));
@@ -73,9 +72,9 @@ contract Vesting is IVesting, Ownable {
         // Start 3 months vestings for each initial holder
         uint256 toVest = (Borroe(borroe).maxTotalSupply() *
             Borroe(borroe).TO_VESTING()) / _BP_CONVERTER;
-        uint256 holderShare = toVest / _initialHolders.length;
-        for (uint256 i = 0; i < _initialHolders.length; i++) {
-            address holder = _initialHolders[i];
+        uint256 holderShare = toVest / initialHolders.length;
+        for (uint256 i = 0; i < initialHolders.length; i++) {
+            address holder = initialHolders[i];
             _startVesting(holder, holderShare, 3, 1 days * 30);
         }
 
