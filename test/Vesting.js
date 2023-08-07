@@ -18,10 +18,16 @@ let exchangeListingAddress = "0xCcBd9F738d5a17989DB6b4e414DB72aba5128F58";
 let marketingAddress = "0xfDefD8489B79b5b81A7901B6B9aCf7730F4AdA07";
 let treasuryAddress = "0xEED7870BBbb6aCE5C38b3CC8b23Eee2a6aCBC7aF";
 let rewardsAddress = "0xAcf91E19290191Fc051Ca9E2181b980EE3fBF2aF";
+let initialHolders = [
+    "0xEb9B48cdA6a200c3F6FFeBCf8764DC0ed0d9b36A",
+    "0x428966e2791925fFAd55bed2Cc57487687A38c89",
+    "0x0d8a0D36405b0bdE8496133830EEEedd1f54f827",
+    "0xef72bb012Ec4825226b92c366CA14c7dB41A5a33",
+    "0xF331579C603dd86086Ce88e562eaE53025a0955B",
+];
 
 let partners;
 let team;
-let initialHolders;
 let holderShare;
 let toLockForTeam;
 let toLockForPartners;
@@ -159,9 +165,11 @@ describe("Vesting", () => {
             it("Should forbid vesting twice", async () => {
                 let { vesting, token } = await loadFixture(deploys);
 
-                await vesting.startInitialVestings();
+                await vesting.startInitialVestings(initialHolders);
 
-                await expect(vesting.startInitialVestings()).to.be.revertedWith(
+                await expect(
+                    vesting.startInitialVestings(initialHolders)
+                ).to.be.revertedWith(
                     "Vesting: Initial vestings already started"
                 );
             });
@@ -173,7 +181,7 @@ describe("Vesting", () => {
             it("Should get user's vesting", async () => {
                 let { vesting, token } = await loadFixture(deploys);
 
-                await vesting.startInitialVestings();
+                await vesting.startInitialVestings(initialHolders);
 
                 let [
                     status1,
@@ -276,10 +284,9 @@ describe("Vesting", () => {
                 let { vesting, token } = await loadFixture(deploys);
 
                 expect(await vesting.vested()).to.equal(false);
-                await expect(vesting.startInitialVestings()).to.emit(
-                    vesting,
-                    "VestingStarted"
-                );
+                await expect(
+                    vesting.startInitialVestings(initialHolders)
+                ).to.emit(vesting, "VestingStarted");
                 expect(await vesting.vested()).to.equal(true);
 
                 let [
@@ -385,7 +392,7 @@ describe("Vesting", () => {
                     await newToken.deployed();
 
                     await expect(
-                        newVesting.startInitialVestings()
+                        newVesting.startInitialVestings(initialHolders)
                     ).to.be.revertedWith("Vesting: Invalid token address");
                 });
                 it("Should fail to start vesting if zero balance", async () => {
@@ -400,7 +407,7 @@ describe("Vesting", () => {
                     await vesting.setToken(mockToken.address);
 
                     await expect(
-                        vesting.startInitialVestings()
+                        vesting.startInitialVestings(initialHolders)
                     ).to.be.revertedWith("Vesting: Insufficient balance");
                 });
             });
@@ -412,7 +419,7 @@ describe("Vesting", () => {
                         it("Should claim correct token amount", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -458,7 +465,7 @@ describe("Vesting", () => {
                         it("Should claim correct token amount", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -506,7 +513,7 @@ describe("Vesting", () => {
                         it("Should not claim the same period twice", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -534,7 +541,7 @@ describe("Vesting", () => {
                         it("Should claim correct token amount", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -584,7 +591,7 @@ describe("Vesting", () => {
                         it("Should claim correct token amount", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -613,7 +620,7 @@ describe("Vesting", () => {
                         it("Should claim correct token amount", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -668,7 +675,7 @@ describe("Vesting", () => {
                         it("Should not claim any tokens before unlock", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -739,7 +746,7 @@ describe("Vesting", () => {
                         it("Should claim correct token amount", async () => {
                             let { vesting, token } = await loadFixture(deploys);
 
-                            await vesting.startInitialVestings();
+                            await vesting.startInitialVestings(initialHolders);
 
                             let holderSharePerMonth = holderShare.div(3);
 
@@ -814,7 +821,7 @@ describe("Vesting", () => {
                 it("Should fail to claim twice", async () => {
                     let { vesting, token } = await loadFixture(deploys);
 
-                    await vesting.startInitialVestings();
+                    await vesting.startInitialVestings(initialHolders);
 
                     // Wait 100 days
                     await time.increase(oneDay * 100);

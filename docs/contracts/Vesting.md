@@ -107,13 +107,18 @@ See {IVesting-setToken}
 ### startInitialVestings
 
 ```solidity
-function startInitialVestings() external nonpayable
+function startInitialVestings(address[] initialHolders) external nonpayable
 ```
 
 See {IVesting-startInitialVestings}
 
 
 
+#### Parameters
+
+| Name | Type | Description |
+|---|---|---|
+| initialHolders | address[] | undefined |
 
 ### transferOwnership
 

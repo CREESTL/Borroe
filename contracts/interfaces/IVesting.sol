@@ -48,7 +48,8 @@ interface IVesting {
 
     /// @notice Starts 3 months vestings for initial token holders.
     ///         Locks tokens for 2 years for team and partners.
-    function startInitialVestings() external;
+    /// @param initialHolders The list of initial holders taking part in vesting
+    function startInitialVestings(address[] memory initialHolders) external;
 
     /// @notice Returns information about the user's vesting
     /// @param user The address of the user
