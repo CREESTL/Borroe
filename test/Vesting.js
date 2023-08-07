@@ -78,7 +78,6 @@ describe("Vesting", () => {
         // Deploy vesting
         let vestingFactory = await ethers.getContractFactory("Vesting");
         let vesting = await vestingFactory.deploy(
-            initialHolders,
             team.address,
             partners.address
         );
@@ -125,24 +124,12 @@ describe("Vesting", () => {
             expect(await vesting.vested()).to.equal(false);
         });
         describe("Fails", () => {
-            it("Should fail to deploy if no holders", async () => {
-                let newVestingFactory = await ethers.getContractFactory(
-                    "Vesting"
-                );
-                await expect(
-                    newVestingFactory.deploy([], team.address, partners.address)
-                ).to.be.revertedWith("Vesting: No initial holders");
-            });
             it("Should fail to deploy if zero address team", async () => {
                 let newVestingFactory = await ethers.getContractFactory(
                     "Vesting"
                 );
                 await expect(
-                    newVestingFactory.deploy(
-                        initialHolders,
-                        zeroAddress,
-                        partners.address
-                    )
+                    newVestingFactory.deploy(zeroAddress, partners.address)
                 ).to.be.revertedWith("Vesting: Invalid team address");
             });
             it("Should fail to deploy if zero address team", async () => {
@@ -150,11 +137,7 @@ describe("Vesting", () => {
                     "Vesting"
                 );
                 await expect(
-                    newVestingFactory.deploy(
-                        initialHolders,
-                        team.address,
-                        zeroAddress
-                    )
+                    newVestingFactory.deploy(team.address, zeroAddress)
                 ).to.be.revertedWith("Vesting: Invalid partners address");
             });
         });
@@ -372,7 +355,6 @@ describe("Vesting", () => {
                         "Vesting"
                     );
                     let newVesting = await newVestingFactory.deploy(
-                        initialHolders,
                         team.address,
                         partners.address
                     );

@@ -41,19 +41,11 @@ contract Vesting is IVesting, Ownable {
         _;
     }
 
-    /// @param initialHolders The list of addresses of initial token holders that
-    ///        will receive tokens after vesting
     /// @param team The address of team wallet to lock tokens for 2 years for
     /// @param partners The address of partners wallet to lock tokens for 2 years for
-    constructor(
-        address[] memory initialHolders,
-        address team,
-        address partners
-    ) {
-        require(initialHolders.length > 0, "Vesting: No initial holders");
+    constructor(address team, address partners) {
         require(team != address(0), "Vesting: Invalid team address");
         require(partners != address(0), "Vesting: Invalid partners address");
-        initialHolders = initialHolders;
         _team = team;
         _partners = partners;
     }
