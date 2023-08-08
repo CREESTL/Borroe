@@ -35,9 +35,9 @@ module.exports = {
             url: "http://127.0.0.1:8545",
         },
         polygon_mainnet: {
-            url: `https://polygon.publicnode.com`,
+            url: `https://polygon-bor.publicnode.com`,
             accounts: [ACC_PRIVATE_KEY],
-            gasPrice: 35000000000,
+            gasPrice: 300000000000,
         },
         polygon_testnet: {
             url: `https://polygon-mumbai-bor.publicnode.com`,

@@ -11,12 +11,12 @@
   },
   "polygon_mainnet": {
     "Vesting": {
-      "address": "",
-      "verification": ""
+      "address": "0x38F967d1FD4beBd96d01FEf793325501cFdf249e",
+      "verification": "https://polygonscan.com/address/0x38F967d1FD4beBd96d01FEf793325501cFdf249e#code"
     },
     "Borroe": {
-      "address": "",
-      "verification": ""
+      "address": "0x13aB388521941d4748EC5735620c981b4D35eA73",
+      "verification": "https://polygonscan.com/address/0x13aB388521941d4748EC5735620c981b4D35eA73#code"
     }
   }
 }
