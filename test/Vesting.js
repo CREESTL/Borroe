@@ -122,6 +122,8 @@ describe("Vesting", () => {
 
             expect(await vesting.borroe()).to.equal(token.address);
             expect(await vesting.vested()).to.equal(false);
+            expect(await vesting.team()).to.equal(team.address);
+            expect(await vesting.partners()).to.equal(partners.address);
         });
         describe("Fails", () => {
             it("Should fail to deploy if zero address team", async () => {

@@ -28,9 +28,9 @@ contract Vesting is IVesting, Ownable {
     address public borroe;
 
     /// @dev Address of team wallet to lock tokens for
-    address private immutable _team;
+    address public immutable team;
     /// @dev Address of partners wallet to lock tokens for
-    address private immutable _partners;
+    address public immutable partners;
 
     /// @notice True if initial vestings have started
     ///         Vestings can only start once
@@ -41,13 +41,13 @@ contract Vesting is IVesting, Ownable {
         _;
     }
 
-    /// @param team The address of team wallet to lock tokens for 2 years for
-    /// @param partners The address of partners wallet to lock tokens for 2 years for
-    constructor(address team, address partners) {
-        require(team != address(0), "Vesting: Invalid team address");
-        require(partners != address(0), "Vesting: Invalid partners address");
-        _team = team;
-        _partners = partners;
+    /// @param team_ The address of team wallet to lock tokens for 2 years for
+    /// @param partners_ The address of partners wallet to lock tokens for 2 years for
+    constructor(address team_, address partners_) {
+        require(team_ != address(0), "Vesting: Invalid team address");
+        require(partners_ != address(0), "Vesting: Invalid partners address");
+        team = team_;
+        partners = partners_;
     }
 
     /// @notice See {IVesting-startInitialVestings}
@@ -75,8 +75,8 @@ contract Vesting is IVesting, Ownable {
         uint256 toLockForPartners = (Borroe(borroe).maxTotalSupply() *
             Borroe(borroe).TO_LOCK_PARTNERS()) / _BP_CONVERTER;
         // This is, effectively, locking
-        _startVesting(_team, toLockForTeam, 1, 1 days * 30 * 24);
-        _startVesting(_partners, toLockForPartners, 1, 1 days * 30 * 24);
+        _startVesting(team, toLockForTeam, 1, 1 days * 30 * 24);
+        _startVesting(partners, toLockForPartners, 1, 1 days * 30 * 24);
     }
 
     /// @notice See {IVesting-setToken}
